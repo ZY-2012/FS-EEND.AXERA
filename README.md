@@ -5,15 +5,35 @@ LS-EEND（FS-EEND 的在线版本）说话人日志（speaker diarization）模�
 
 原生**逐帧流式**推理路径完整迁移到 NPU，量化后与原生 PyTorch 对齐：
 
-| 路径 | vs 原生 cosine | DER (collar 0.25) | ms/帧 | RTF |
-|---|---|---|---|---|
-| 原生 PyTorch 逐帧 | — | **1.2156%** | — | — |
-| FP32 ONNX 流式循环 | **1.0000000** | 1.6489% | — | — |
-| **AX650N Python** | **0.9985337** | **1.9512%** | 7.29 | 0.073 |
-| **AX650N C++** | 0.9985337 | **1.9512%** | **2.79** | **0.0279** |
+### 仿真样本（`test_samples/mix_0000176.wav`，192 s / 1921 帧 / 4 人）
 
-测试录音 `mix_0000176.wav`（192.02 s / 1921 帧 / 4 人），参考 RTTM 来自上游
-`test_samples/`。Python 路径 confusion 为 **0%**（说话人指派完全正确）。
+| 路径 | vs 原生 cosine | DER（±0.25 s，上游口径） | DER（±0.125 s） | ms/帧 | RTF |
+|---|---|---|---|---|---|
+| 原生 PyTorch 逐帧 | — | **0.4411%** | 1.2156% | — | — |
+| FP32 ONNX 流式循环 | **1.0000000** | 0.8672% | 1.6489% | — | — |
+| **AX650N Python** | **0.9985337** | **1.1214%** | 1.9512% | 7.29 | 0.073 |
+| **AX650N C++** | 0.9985337 | **1.1214%** | 1.9512% | **2.79** | **0.0279** |
+
+两条板端路径 confusion 均为 **0%**（说话人指派完全正确），DER 完全相同。
+
+> 口径说明：上游 `metrics.py` 用 `DiarizationErrorRate(collar=50)`，而其 `Segment`
+> 单位是 10 ms 帧，注释写明 "250ms tolerance" —— 等效 pyannote 的 `collar=0.5`
+> （±0.25 s，NIST 惯例）。表中两列都给出，便于对照。
+
+### AMI Eval（真实 16 kHz 会议，`ls_eend_ami_allspk_model.ckpt`）
+
+参考 RTTM 由 AMI ASR 切片文件名的时间戳重建，音频为官方 Mix-Headset 混音；
+协议按上游 README：**不用 collar、不用中值滤波**，`max_speakers=4`。
+
+| meeting | 帧数 | 原生 FP32 | 板端 U16/S8 | Δ |
+|---|---|---|---|---|
+| ES2004a | 10493 | 19.61% | 19.75% | +0.14 |
+| IS1009a | 8388 | 27.33% | 28.09% | +0.76 |
+| EN2002d | 22098 | 27.59% | 29.97% | +2.38 |
+| EN2002a | 21427 | 27.60% | 34.70% | +7.10 |
+| **加权（4 场）** | | **26.50%** | **30.18%** | **+3.68** |
+
+板端 2.2 ms/帧。上游 README 的 AMI Eval 是 20.76%（完整 16 场、官方 NXT 标注）。
 
 - [x] 模型导出 + 导出对分（`model_convert/`）
 - [x] 量化校准数据生成 + Pulsar2 量化（`model_convert/`）
@@ -27,12 +47,19 @@ LS-EEND（FS-EEND 的在线版本）说话人日志（speaker diarization）模�
 
 ## 支持模型
 
-| 模型 | 输入 | 输出 | axmodel | 量化 |
-|---|---|---|---|---|
-| LS-EEND (`ls_eend_1-8spk_16_25_avg`) | `feat [1,1,345]` + 10 路状态 | `pred [1,1,10]` + 11 路状态 | 12.5 MB | U16 激活 / S8 权重，pred cosine 0.9985 |
+上游为每个数据集单独训练了一个模型，`max_speakers` 不同导致输出通道数不同。
+转换流程对四个 checkpoint 都适用（用 `LS_EEND_CONF` 指定对应 infer YAML）：
 
-8 kHz 输入，最多 8 个说话人（10 通道：ch0 静音、ch1–8 说话人、ch9 非说话人），
-每帧 0.1 s。
+| checkpoint | infer YAML | max_speakers | 输出通道 | 已验证 |
+|---|---|---|---|---|
+| `ls_eend_1-8spk_16_25_avg_model` | `..._infer.yaml` | 8 | 10 | ✅ 量化 + 板端 |
+| `ls_eend_ami_allspk_model` | `..._ami_infer.yaml` | 4 | 6 | ✅ 量化 + 板端 |
+| `ls_eend_ch_allspk_model` | `..._callhome_infer.yaml` | 7 | 9 | 脚本支持，未测 |
+| `ls_eend_dih2/dih3_allspk_model` | `..._dihard2/3_infer.yaml` | 10 | 12 | 脚本支持，未测 |
+
+模型接口：`feat [1,1,345]` + 10 路状态 → `pred [1,1,C]` + 11 路状态，axmodel 约 12.5 MB，
+U16 激活 / S8 权重。8 kHz 输入，每帧 0.1 s；通道布局为 ch0 静音、ch1..C-2 说话人、
+ch(C-1) 非说话人。
 
 ## 目录结构
 
@@ -127,7 +154,14 @@ U16 MinMax 截断之后的所有帧。必须在全程均匀采样。
   `kaiser_best`，C++ 用同参数的 Kaiser 窗 sinc）。
   注意上游 `extract_fbank()` **不做重采样**、直接丢弃 `sf.read` 返回的采样率，
   所以拿 16 kHz 文件喂原生脚本会静默得到错误特征且时间轴差 2 倍。
-- `max_speakers` 上限 8。
+- **量化退化随录音长度增长**，且几乎全部落在 confusion（说话人指派）：
+  8~10k 帧（14~17 min）时 Δconfusion 仅 +0.5~0.8 pp，22k 帧（36 min）时可达
+  +1.4~5.9 pp。怀疑主因是 `inv_count = 1/t` 在 2 万帧时降到 5e-5，已低于校准下界，
+  且 U16 单一尺度难以同时覆盖 1.0 与 5e-5 五个数量级。**长会议场景建议用同等长度的
+  录音做校准。**
+- **每个 checkpoint 的输出通道数不同**，由其 infer YAML 的 `max_speakers` 决定：
+  simu 8→10、AMI 4→6、CALLHOME 7→9、DIHARD2/3 10→12。转换脚本用 `LS_EEND_CONF`
+  切换；两个 SDK 都在加载时从模型读取通道数，不写死。
 
 ## License
 

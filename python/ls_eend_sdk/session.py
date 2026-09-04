@@ -22,7 +22,9 @@ import numpy as np
 N_ENC_LAYERS = 4
 N_DEC_LAYERS = 2
 CONV_DELAY = 9  # StreamingConv1d emits from its (center+1)=10th call
-MAX_SPEAKER_SLOTS = 10  # ch0 silence, ch1..8 speakers, ch9 non-speaker
+# Output channel count is read from the model at load time: each LS-EEND
+# release has a different max_speakers (simu 8 -> 10 channels, AMI 4 -> 6,
+# CALLHOME 7 -> 9, DIHARD 10 -> 12).
 
 INPUT_NAMES = (
     ['feat', 'inv_count', 'dec_inv_count', 'conv_cache']
@@ -50,6 +52,7 @@ class StreamingDiarizer:
         if missing:
             raise RuntimeError(f'model is missing expected inputs: {missing}')
         self.shapes = shapes
+        self.slots = int(np.prod([d for d in self._session.get_outputs()[0].shape]))
         self.reset()
 
     @staticmethod
@@ -80,7 +83,7 @@ class StreamingDiarizer:
         Args:
             frame: (345,) or (1,1,345) float32 log-mel frame.
         Returns:
-            (MAX_SPEAKER_SLOTS,) float32 logits, or None during the conv warmup.
+            (slots,) float32 logits, or None during the conv warmup.
         """
         state = self._state
         state['feat'] = np.asarray(frame, dtype=np.float32).reshape(self.shapes['feat'])
@@ -114,7 +117,7 @@ class StreamingDiarizer:
     def run(self, features, progress=None):
         """Run a whole recording.
 
-        Returns (T - CONV_DELAY, MAX_SPEAKER_SLOTS) float32 logits. The first
+        Returns (T - CONV_DELAY, slots) float32 logits. The first
         CONV_DELAY frames produce no output, and the trailing 0.9 s is not
         emitted (the native flush pushes zero *embeddings* past the encoder,
         which a fused one-frame graph cannot express).

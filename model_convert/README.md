@@ -23,6 +23,29 @@ git clone https://github.com/Audio-WestlakeU/FS-EEND.git
 | `LS_EEND_CKPT` | PyTorch 权重 | `$LS_EEND_REPO/../ls_eend_1-8spk_16_25_avg_model.ckpt` |
 | `LS_EEND_WAV` | 校准与验证用录音 | `$LS_EEND_REPO/test_samples/mix_0000176.wav` |
 | `LS_EEND_OUT` | 产物根目录 | 本目录 |
+| `LS_EEND_CONF` | `conf/` 下的 infer YAML 文件名，决定 `max_speakers` 与输出通道数 | `spk_onl_conformer_retention_enc_dec_nonautoreg_infer.yaml` |
+
+上游每个数据集一个模型，`max_speakers` 不同：
+
+| checkpoint | `LS_EEND_CONF` | max_speakers | 输出通道 |
+|---|---|---|---|
+| `ls_eend_1-8spk_16_25_avg_model` | `..._infer.yaml` | 8 | 10 |
+| `ls_eend_ami_allspk_model` | `..._ami_infer.yaml` | 4 | 6 |
+| `ls_eend_ch_allspk_model` | `..._callhome_infer.yaml` | 7 | 9 |
+| `ls_eend_dih2/dih3_allspk_model` | `..._dihard2/3_infer.yaml` | 10 | 12 |
+
+例如量化 AMI 模型：
+
+```bash
+export LS_EEND_CKPT=/path/to/ls_eend_ami_allspk_model.ckpt
+export LS_EEND_CONF=spk_onl_conformer_retention_enc_dec_nonautoreg_ami_infer.yaml
+export LS_EEND_WAV=/path/to/an_ami_meeting_8k.wav      # 校准用同域录音
+export LS_EEND_OUT=/path/to/ami_output
+```
+
+**校准录音的长度要覆盖目标场景。** 实测量化退化随录音长度增长（36 min 会议上
+Δconfusion 可达 +5.9 pp，而 14 min 只有 +0.8 pp），因为 `inv_count = 1/t` 会跌到
+校准范围之外。
 
 ```bash
 export LS_EEND_REPO=/path/to/FS-EEND/LS-EEND

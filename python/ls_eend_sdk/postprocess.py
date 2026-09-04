@@ -11,19 +11,21 @@ from .feature import FRAME_SEC
 
 SILENCE_CHANNEL = 0
 FIRST_SPEAKER_CHANNEL = 1
-LAST_SPEAKER_CHANNEL = 8  # ch9 is the non-speaker slot
+# The last channel is the non-speaker slot, so speakers are channels
+# 1 .. n_channels-2. n_channels depends on the checkpoint's max_speakers
+# (simu 8 -> 10 channels, AMI 4 -> 6, CALLHOME 7 -> 9, DIHARD 10 -> 12).
 
 
 def to_activity(logits, max_speakers=None, threshold=0.5, median=11):
-    """logits (T,10) -> binary activity grid (T, n_speakers).
+    """logits (T, C) -> binary activity grid (T, n_speakers).
 
-    Channel 0 is silence and channel 9 is the non-speaker slot, so only
-    channels 1..8 are speakers. ``max_speakers`` keeps the first N of them.
+    Channel 0 is silence and the last channel is the non-speaker slot, so the
+    speakers are channels 1..C-2. ``max_speakers`` keeps the first N of them.
     """
     from scipy.signal import medfilt
 
     probs = 1.0 / (1.0 + np.exp(-np.asarray(logits, dtype=np.float32)))
-    last = LAST_SPEAKER_CHANNEL
+    last = probs.shape[1] - 2
     if max_speakers is not None:
         last = min(last, FIRST_SPEAKER_CHANNEL + max_speakers - 1)
     active = (probs[:, FIRST_SPEAKER_CHANNEL:last + 1] > threshold).astype(int)

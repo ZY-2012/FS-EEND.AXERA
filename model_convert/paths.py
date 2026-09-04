@@ -11,6 +11,19 @@ overrides so nothing is tied to one machine:
                    (default: $LS_EEND_REPO/test_samples/mix_0000176.wav)
     LS_EEND_OUT    output root for export/ calib_data/ compile/
                    (default: this directory)
+    LS_EEND_CONF   infer YAML basename under $LS_EEND_REPO/conf, which fixes
+                   `max_speakers` and therefore the model's output channel count
+                   (default: spk_onl_conformer_retention_enc_dec_nonautoreg_infer.yaml,
+                   i.e. the simulated-data model with max_speakers=8 -> 10 channels)
+
+Each LS-EEND release is trained with a different `max_speakers`, so the exported
+graph shape differs per checkpoint:
+
+    checkpoint                        conf                       max_speakers  channels
+    ls_eend_1-8spk_16_25_avg_model    ..._infer.yaml                        8        10
+    ls_eend_ami_allspk_model          ..._ami_infer.yaml                    4         6
+    ls_eend_ch_allspk_model           ..._callhome_infer.yaml               7         9
+    ls_eend_dih2/dih3_allspk_model    ..._dihard2/3_infer.yaml             10        12
 """
 from __future__ import annotations
 
@@ -30,7 +43,9 @@ LS = _env_path('LS_EEND_REPO', (HERE / '../../FS-EEND/LS-EEND').resolve())
 OUT = _env_path('LS_EEND_OUT', HERE)
 CKPT = _env_path('LS_EEND_CKPT', LS.parent / 'ls_eend_1-8spk_16_25_avg_model.ckpt')
 WAV = _env_path('LS_EEND_WAV', LS / 'test_samples' / 'mix_0000176.wav')
-CONFIG_YAML = LS / 'conf' / 'spk_onl_conformer_retention_enc_dec_nonautoreg_infer.yaml'
+CONF_NAME = os.environ.get('LS_EEND_CONF',
+                           'spk_onl_conformer_retention_enc_dec_nonautoreg_infer.yaml')
+CONFIG_YAML = LS / 'conf' / CONF_NAME
 
 EXPORT_DIR = OUT / 'export'
 CALIB_DIR = OUT / 'calib_data'

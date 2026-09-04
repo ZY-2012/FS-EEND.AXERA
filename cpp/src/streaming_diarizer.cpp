@@ -55,6 +55,7 @@ StreamingDiarizer::StreamingDiarizer(const std::string& model_path) : runner_(mo
             "model does not look like the LS-EEND streaming graph "
             "(expected feat / inv_count / dec_inv_count / conv_cache inputs)");
     }
+    slots_ = static_cast<int>(runner_.output_elems("pred"));
     reset();
 }
 
@@ -86,7 +87,8 @@ DiarResult StreamingDiarizer::run(const std::vector<float>& features, int frames
     DiarResult result;
     result.frames = frames;
     result.duration_sec = duration_sec;
-    result.logits.reserve(static_cast<size_t>(frames - kConvDelay) * kSpeakerSlots);
+    result.slots = slots_;
+    result.logits.reserve(static_cast<size_t>(frames - kConvDelay) * slots_);
 
     const size_t inv_elems = runner_.input_elems("inv_count");
     const size_t dec_inv_elems = runner_.input_elems("dec_inv_count");
@@ -133,27 +135,27 @@ DiarResult StreamingDiarizer::run(const std::vector<float>& features, int frames
         ++dec_t_;
 
         const float* pred = runner_.output("pred");
-        result.logits.insert(result.logits.end(), pred, pred + kSpeakerSlots);
+        result.logits.insert(result.logits.end(), pred, pred + slots_);
     }
     const auto t_end = std::chrono::steady_clock::now();
 
-    result.emitted_frames = static_cast<int>(result.logits.size() / kSpeakerSlots);
+    result.emitted_frames = static_cast<int>(result.logits.size() / slots_);
     result.latency_ms_total = std::chrono::duration<double, std::milli>(t_end - t_start).count();
     result.latency_ms_per_frame = result.latency_ms_total / std::max(frames, 1);
     if (duration_sec > 0.0) result.rtf = (result.latency_ms_total / 1000.0) / duration_sec;
 
-    result.segments = decode_segments(result.logits, result.emitted_frames, max_speakers,
-                                     threshold, median, duration_sec);
+    result.segments = decode_segments(result.logits, result.emitted_frames, slots_,
+                                     max_speakers, threshold, median, duration_sec);
     return result;
 }
 
 std::vector<DiarSegment> decode_segments(const std::vector<float>& logits, int frames,
-                                        int max_speakers, float threshold, int median,
-                                        double duration_sec) {
-    const int slots = StreamingDiarizer::kSpeakerSlots;
-    // Channel 0 is silence and channel 9 is the non-speaker slot.
+                                        int slots, int max_speakers, float threshold,
+                                        int median, double duration_sec) {
+    // Channel 0 is silence and the last channel is the non-speaker slot, so the
+    // speakers are channels 1 .. slots-2.
     const int first = 1;
-    const int last = std::min(8, first + std::max(max_speakers, 1) - 1);
+    const int last = std::min(slots - 2, first + std::max(max_speakers, 1) - 1);
 
     std::vector<DiarSegment> segments;
     for (int ch = first; ch <= last; ++ch) {

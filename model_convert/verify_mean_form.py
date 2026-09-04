@@ -21,7 +21,8 @@ def main():
     from datasets.feature import extract_fbank
 
     model, cfg = load()
-    step = StreamingStep(model, 10).eval()
+    max_nspks = cfg['data']['max_speakers'] + 2   # simu=10, AMI=6, CALLHOME=9, DIHARD=12
+    step = StreamingStep(model, max_nspks).eval()
     feat = extract_fbank(str(WAV),
                          context_size=cfg['data']['context_recp'], input_transform=cfg['data']['feat_type'],
                          frame_size=cfg['data']['feat']['win_length'], frame_shift=cfg['data']['feat']['hop_length'],
@@ -31,7 +32,7 @@ def main():
     enc_states = []
     for _ in range(4):
         enc_states += [torch.zeros(B, heads, D, D), torch.zeros(B, H, step.convk - 1)]
-    dec_states = [torch.zeros(B*10, heads, D, D) for _ in range(2)]
+    dec_states = [torch.zeros(B*max_nspks, heads, D, D) for _ in range(2)]
     conv_cache = torch.zeros(B, H, step.outk - 1)
 
     preds = []

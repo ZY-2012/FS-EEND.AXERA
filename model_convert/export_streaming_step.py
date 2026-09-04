@@ -116,8 +116,14 @@ def load():
 
 def main():
     EXPORT_DIR.mkdir(parents=True,exist_ok=True)
-    m,cfg=load(); wrap=StreamingStep(m,10).eval()
+    m,cfg=load()
+    # Each release is trained with a different max_speakers, so the number of
+    # output channels (and the decoder state batch) follows the infer YAML:
+    # simu=8->10, AMI=4->6, CALLHOME=7->9, DIHARD2/3=10->12.
+    max_nspks=cfg['data']['max_speakers']+2
+    wrap=StreamingStep(m,max_nspks).eval()
     B=1; D=345; H=256; heads=4; K=16; DK=18
+    print(f'config {CONFIG_YAML.name}: max_speakers={cfg["data"]["max_speakers"]} -> {max_nspks} channels')
     feat=torch.randn(B,1,D)
     conv_cache=torch.zeros(B,H,DK)
     inv_count=torch.ones(1,heads,1,1); dec_inv_count=torch.ones(1,heads,1,1)
@@ -128,7 +134,7 @@ def main():
         inputs += [torch.zeros(B,heads,H//heads,H//heads),torch.zeros(B,H,K-1)]
     for i in range(2):
         names += [f'dec{i}_kv']
-        inputs += [torch.zeros(B*10,heads,H//heads,H//heads)]
+        inputs += [torch.zeros(B*max_nspks,heads,H//heads,H//heads)]
     outputs = ['pred']
     for i in range(4): outputs += [f'enc{i}_inc', f'enc{i}_conv_out']
     outputs += ['conv_cache_out']
@@ -138,7 +144,7 @@ def main():
         ref=torch_outputs[0]
     onnx_path=EXPORT_DIR/'streaming_step.onnx'
     torch.onnx.export(wrap,tuple(inputs),str(onnx_path),input_names=names,output_names=outputs,opset_version=17,dynamo=False,do_constant_folding=True)
-    meta={'model_name':'ls_eend_streaming_step','task':'streaming_speaker_diarization','input_names':names,'output_names':outputs,'input_shapes':{n:list(x.shape) for n,x in zip(names,inputs)},'notes':'frame-wise state model in bounded mean form. Retention states hold the running mean K_t/t instead of the upstream K_t/sqrt(t), so magnitudes stay bounded and a single U16 scale covers the whole recording; the dropped sqrt(t) gain is cancelled exactly by the following affine-free LayerNorm. The graph emits the bounded per-frame increment enc{i}_inc/dec{i}_inc, and the CALLER accumulates mean += (inc-mean)/t in FP32 so quantization error stays per-frame. Caller also feeds inv_count=1/t (encoder) and dec_inv_count=1/t_dec (decoder), and MUST hold decoder state frozen for the first 9 frames (conv warmup) while discarding those preds, matching native StreamingConv1d.'}
+    meta={'model_name':'ls_eend_streaming_step','config':CONFIG_YAML.name,'max_speakers':cfg['data']['max_speakers'],'max_nspks':max_nspks,'task':'streaming_speaker_diarization','input_names':names,'output_names':outputs,'input_shapes':{n:list(x.shape) for n,x in zip(names,inputs)},'notes':'frame-wise state model in bounded mean form. Retention states hold the running mean K_t/t instead of the upstream K_t/sqrt(t), so magnitudes stay bounded and a single U16 scale covers the whole recording; the dropped sqrt(t) gain is cancelled exactly by the following affine-free LayerNorm. The graph emits the bounded per-frame increment enc{i}_inc/dec{i}_inc, and the CALLER accumulates mean += (inc-mean)/t in FP32 so quantization error stays per-frame. Caller also feeds inv_count=1/t (encoder) and dec_inv_count=1/t_dec (decoder), and MUST hold decoder state frozen for the first 9 frames (conv warmup) while discarding those preds, matching native StreamingConv1d.'}
     (EXPORT_DIR/'model_meta.json').write_text(json.dumps(meta,indent=2),encoding='utf-8')
     torch.save(ref,EXPORT_DIR/'sample_output.pt')
     print('exported',onnx_path)

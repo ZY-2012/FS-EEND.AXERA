@@ -13,7 +13,8 @@ struct DiarSegment {
 
 struct DiarResult {
     std::vector<DiarSegment> segments;
-    std::vector<float> logits;   // (emitted_frames, kSpeakerSlots) row-major
+    std::vector<float> logits;   // (emitted_frames, slots) row-major
+    int slots = 0;               // model output channels: ch0 silence, ch1..slots-2 speakers
     int frames = 0;              // feature frames fed to the encoder
     int emitted_frames = 0;      // frames that produced a prediction
     double duration_sec = 0.0;
@@ -26,13 +27,17 @@ struct DiarResult {
 // python/ls_eend_sdk/session.py.
 class StreamingDiarizer {
 public:
-    static constexpr int kConvDelay = 9;      // StreamingConv1d emits from its 10th call
-    static constexpr int kSpeakerSlots = 10;  // ch0 silence, ch1..8 speakers, ch9 non-speaker
+    static constexpr int kConvDelay = 9;  // StreamingConv1d emits from its 10th call
     static constexpr int kEncLayers = 4;
     static constexpr int kDecLayers = 2;
     static constexpr double kFrameSec = 0.1;
 
     explicit StreamingDiarizer(const std::string& model_path);
+
+    // Output channel count, read from the model: each LS-EEND release is trained
+    // with a different max_speakers (simu 8 -> 10 channels, AMI 4 -> 6,
+    // CALLHOME 7 -> 9, DIHARD 10 -> 12).
+    int slots() const { return slots_; }
 
     // features: (frames, 345) row-major log-mel, as produced by
     // extract_ls_eend_features().
@@ -51,10 +56,11 @@ private:
     std::vector<float> conv_cache_;
     int enc_t_ = 0;
     int dec_t_ = 0;
+    int slots_ = 0;
 };
 
 std::vector<DiarSegment> decode_segments(const std::vector<float>& logits, int frames,
-                                        int max_speakers, float threshold, int median,
-                                        double duration_sec);
+                                        int slots, int max_speakers, float threshold,
+                                        int median, double duration_sec);
 void write_rttm(const std::vector<DiarSegment>& segments, const std::string& path,
                 const std::string& uri);
