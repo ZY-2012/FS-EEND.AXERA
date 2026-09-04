@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+
+# Quantized models and float weights live on HuggingFace, not here.
+*.axmodel
+*.onnx
+*.pt
+*.ckpt
+*.bin
+*.npy
+*.tar.gz
+
+# Conversion products (regenerate with model_convert/)
+model_convert/export/
+model_convert/calib_data/
+model_convert/compile/
+
+# C++ build products and toolchains (see cpp/README.md for downloads)
+cpp/build*/
+cpp/bin/
+cpp/toolchains/
+dump_features
+
+# Run artifacts
+*.rttm

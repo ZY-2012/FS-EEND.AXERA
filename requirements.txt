@@ -1,0 +1,12 @@
+# Inference (board): axengine comes preinstalled in the AX650N image.
+numpy>=1.21
+scipy>=1.7
+soundfile>=0.12
+librosa>=0.9,<0.11
+
+# Model conversion (host only) -- torch/onnx are not needed for inference.
+# torch>=2.0
+# onnx>=1.14
+# onnxruntime>=1.15
+# hyperpyyaml>=1.2
+# pyannote.metrics>=3.2      # DER evaluation

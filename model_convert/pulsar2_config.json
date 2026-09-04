@@ -1,0 +1,151 @@
+{
+  "input": "/workspace/export/streaming_step.onnx",
+  "output_dir": "/workspace/compile",
+  "output_name": "streaming_step.axmodel",
+  "work_dir": "/workspace/compile/work",
+  "model_type": "ONNX",
+  "target_hardware": "AX650",
+  "npu_mode": "NPU3",
+  "input_shapes": "feat:1x1x345",
+  "onnx_opt": {
+    "disable_onnx_optimization": false,
+    "enable_onnxsim": true,
+    "model_check": true
+  },
+  "quant": {
+    "calibration_method": "MinMax",
+    "input_configs": [
+      {
+        "tensor_name": "feat",
+        "calibration_dataset": "/workspace/calib_data/feat.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "inv_count",
+        "calibration_dataset": "/workspace/calib_data/inv_count.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "dec_inv_count",
+        "calibration_dataset": "/workspace/calib_data/dec_inv_count.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "conv_cache",
+        "calibration_dataset": "/workspace/calib_data/conv_cache.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc0_kv",
+        "calibration_dataset": "/workspace/calib_data/enc0_kv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc0_conv",
+        "calibration_dataset": "/workspace/calib_data/enc0_conv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc1_kv",
+        "calibration_dataset": "/workspace/calib_data/enc1_kv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc1_conv",
+        "calibration_dataset": "/workspace/calib_data/enc1_conv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc2_kv",
+        "calibration_dataset": "/workspace/calib_data/enc2_kv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc2_conv",
+        "calibration_dataset": "/workspace/calib_data/enc2_conv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc3_kv",
+        "calibration_dataset": "/workspace/calib_data/enc3_kv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "enc3_conv",
+        "calibration_dataset": "/workspace/calib_data/enc3_conv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "dec0_kv",
+        "calibration_dataset": "/workspace/calib_data/dec0_kv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      },
+      {
+        "tensor_name": "dec1_kv",
+        "calibration_dataset": "/workspace/calib_data/dec1_kv.tar.gz",
+        "calibration_format": "Numpy",
+        "calibration_size": 64,
+        "calibration_mean": [],
+        "calibration_std": []
+      }
+    ],
+    "layer_configs": [
+      {
+        "start_tensor_names": [
+          "DEFAULT"
+        ],
+        "end_tensor_names": [
+          "DEFAULT"
+        ],
+        "data_type": "U16",
+        "weight_data_type": "S8",
+        "output_data_type": "U16"
+      }
+    ],
+    "highest_mix_precision": false,
+    "precision_analysis": true,
+    "precision_analysis_method": "EndToEnd"
+  },
+  "compiler": {
+    "check": 0
+  }
+}

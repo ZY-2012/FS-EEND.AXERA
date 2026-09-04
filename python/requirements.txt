@@ -1,0 +1,6 @@
+numpy>=1.21
+scipy>=1.7
+soundfile>=0.12
+librosa>=0.9,<0.11
+# axengine is preinstalled on the AX650N board image.
+# For host-side .onnx testing instead: onnxruntime>=1.15
