@@ -68,15 +68,15 @@ export LD_LIBRARY_PATH=/soc/lib:$LD_LIBRARY_PATH
 
 | 指标 | C++ | Python |
 |---|---|---|
-| ms/帧 | **2.50** | 7.29 |
-| RTF | **0.0250** | 0.0726 |
-| DER（collar 0.25） | 2.63% | 1.95% |
-| 段数 | 57 | 55 |
+| ms/帧 | **2.79** | 7.29 |
+| RTF | **0.0279** | 0.0726 |
+| DER（collar 0.25） | **1.9512%** | **1.9512%** |
+| 段数 | 55 | 55 |
 
-C++ 比 Python 快约 2.9 倍（主机端 FP32 累加在 numpy 里开销较大）。
+C++ 比 Python 快约 2.6 倍（主机端 FP32 累加在 numpy 里开销较大），DER 完全相同。
 
-两者互相分歧 1.01%（把 Python 输出当参考、collar 0 算 DER）。残差来自前端 2.3e-05
-的浮点差异经 1900 步递推后，在少数接近阈值的帧上翻转判决——不是逻辑差异。
+55 段里 54 段逐字节一致，仅 1 段边界差一帧（182.0 vs 181.9 s）——来自前端 2.3e-05 的
+浮点残差翻转了一个接近阈值的帧，在 0.25 s collar 内，不影响 DER。
 
 ## 前端对分
 
@@ -101,6 +101,26 @@ print('cosine', float((py.ravel() @ cpp.ravel()) /
 
 实测 `cosine 0.99999988`、`max diff 2.3e-05`。
 
+### 重采样
+
+非 8 kHz 输入会先带限重采样到 8 kHz（`resample_audio()`）。**不能用线性插值**：
+
+| 频率 | 线性插值增益（sinc²） |
+|---|---|
+| 1 kHz | -0.45 dB |
+| 2 kHz | -1.82 dB |
+| 3 kHz | -4.22 dB |
+| 3.9 kHz | -7.42 dB |
+
+线性插值既没有抗混叠低通（16 kHz 输入里 4 kHz 以上的能量会全部折叠进频带），通带本身
+也严重下坠。实测真实 16 kHz 语音上特征 cosine 只有 **0.990**（maxdiff 1.51）。
+
+改用 Kaiser 窗 sinc 后（参数取 resampy `kaiser_best` 预设，即 librosa 默认：
+`rolloff=0.945`、`beta=14.769656`、32 个零点、1024 倍过采样查表），三个 16 kHz 文件的
+特征 cosine 都到 **0.9998**；8 kHz 输入不触发重采样，仍是 0.99999988。
+
+### 前端
+
 前端有四个容易踩错、必须与 librosa 一致的点：
 
 1. **Slaney mel 尺度**（`librosa.filters.mel` 默认 `htk=False`），不是
@@ -122,3 +142,8 @@ print('cosine', float((py.ravel() @ cpp.ravel()) /
 - `AX_NPU_*` 符号在 `libax_interpreter`，不在 `libax_engine`——三个库
   （`ax_engine ax_interpreter ax_sys`）都要链。
 - `AX_SYS_Init()` 必须在 `AX_ENGINE_Init()` 之前调用，否则后者返回错误。
+- **`AX_SYS_MemAllocCached` 分配的是带缓存内存，必须自己维护一致性**：每次
+  `AX_ENGINE_RunSync` 前对所有输入 `AX_SYS_MflushCache`、之后对所有输出
+  `AX_SYS_MinvalidateCache`。漏掉不会报错，但 NPU 可能读到 DRAM 里的旧数据 ——
+  症状是**同一二进制、同一输入、多次运行结果不同**（实测 55/56/57 段来回跳，
+  DER 在 1.95%～2.63% 之间漂）。补上后两次运行 RTTM 逐字节一致。

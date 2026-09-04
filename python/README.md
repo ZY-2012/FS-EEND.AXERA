@@ -72,7 +72,7 @@ for frame in extract_features(audio):
 | RTF | 0.0726 |
 | DER（collar 0.25） | 1.95%（miss 1.39%、FA 0.56%、confusion 0%） |
 
-同一模型的 C++ 版本快约 2.9 倍，见 [../cpp/README.md](../cpp/README.md)。
+同一模型的 C++ 版本快约 2.6 倍且 DER 相同，见 [../cpp/README.md](../cpp/README.md)。
 
 ## 输出时间轴
 

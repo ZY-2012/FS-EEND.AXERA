@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     try {
         AudioData audio = read_wav_mono(wav_path);
         const double duration = audio.samples.size() / static_cast<double>(audio.sample_rate);
-        if (audio.sample_rate != 8000) audio = resample_linear(audio, 8000);
+        if (audio.sample_rate != 8000) audio = resample_audio(audio, 8000);
 
         std::vector<float> features = extract_ls_eend_features(audio);
         const int feat_dim = (2 * 7 + 1) * 23;  // 345

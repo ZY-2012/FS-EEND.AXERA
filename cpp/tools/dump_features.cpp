@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     }
     try {
         AudioData audio = read_wav_mono(argv[1]);
-        if (audio.sample_rate != 8000) audio = resample_linear(audio, 8000);
+        if (audio.sample_rate != 8000) audio = resample_audio(audio, 8000);
         const std::vector<float> features = extract_ls_eend_features(audio);
         const size_t feat_dim = (2 * 7 + 1) * 23;
 

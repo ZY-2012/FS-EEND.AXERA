@@ -145,4 +145,21 @@ bool AxEngineRunner::has_input(const std::string& name) const {
 const std::vector<std::string>& AxEngineRunner::input_names() const { return impl_->in_names; }
 const std::vector<std::string>& AxEngineRunner::output_names() const { return impl_->out_names; }
 
-void AxEngineRunner::run() { check_ax(AX_ENGINE_RunSync(impl_->handle, &impl_->io), "AX_ENGINE_RunSync"); }
+void AxEngineRunner::run() {
+    // Buffers come from AX_SYS_MemAllocCached, so the CPU's writes may still sit
+    // in cache when the NPU reads DRAM. Without these two calls the run is
+    // non-deterministic: identical input produced RTTMs differing by one frame
+    // on ~1% of frames.
+    for (AX_U32 i = 0; i < impl_->io.nInputSize; ++i) {
+        check_ax(AX_SYS_MflushCache(impl_->io.pInputs[i].phyAddr, impl_->io.pInputs[i].pVirAddr,
+                                    impl_->io.pInputs[i].nSize),
+                 "AX_SYS_MflushCache(input)");
+    }
+    check_ax(AX_ENGINE_RunSync(impl_->handle, &impl_->io), "AX_ENGINE_RunSync");
+    for (AX_U32 i = 0; i < impl_->io.nOutputSize; ++i) {
+        check_ax(AX_SYS_MinvalidateCache(impl_->io.pOutputs[i].phyAddr,
+                                         impl_->io.pOutputs[i].pVirAddr,
+                                         impl_->io.pOutputs[i].nSize),
+                 "AX_SYS_MinvalidateCache(output)");
+    }
+}

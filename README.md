@@ -10,7 +10,7 @@ LS-EEND（FS-EEND 的在线版本）说话人日志（speaker diarization）模�
 | 原生 PyTorch 逐帧 | — | **1.2156%** | — | — |
 | FP32 ONNX 流式循环 | **1.0000000** | 1.6489% | — | — |
 | **AX650N Python** | **0.9985337** | **1.9512%** | 7.29 | 0.073 |
-| **AX650N C++** | — | **2.6339%** | **2.50** | **0.0250** |
+| **AX650N C++** | 0.9985337 | **1.9512%** | **2.79** | **0.0279** |
 
 测试录音 `mix_0000176.wav`（192.02 s / 1921 帧 / 4 人），参考 RTTM 来自上游
 `test_samples/`。Python 路径 confusion 为 **0%**（说话人指派完全正确）。
@@ -120,7 +120,14 @@ U16 MinMax 截断之后的所有帧。必须在全程均匀采样。
 - **尾部 0.9 s 不输出。** 原生 flush 把零 *embedding* 直接推进输出卷积、绕过 encoder，
   融合的单帧图表达不了。
 - **前端有状态。** `logmel23_cummn` 用累积均值归一化，跨调用不是无状态的。
-- 采样率固定 8 kHz；`max_speakers` 上限 8。
+- **模型是 8 kHz 的**：上游配置 `sample_rate: 8000`，`datasets/feature.py` 里 `sr = 8000`
+  硬编码，10 个 LS-EEND config 全部用 `logmel23_cummn`。上游 README 也明确写了
+  「AMI, DIHARD2 and DIHARD3 data are down-sampled to 8 kHz」。所以降到 8 kHz 是既定
+  路径，不是妥协。本 SDK 的两条路径都会自动带限重采样（Python 用 librosa
+  `kaiser_best`，C++ 用同参数的 Kaiser 窗 sinc）。
+  注意上游 `extract_fbank()` **不做重采样**、直接丢弃 `sf.read` 返回的采样率，
+  所以拿 16 kHz 文件喂原生脚本会静默得到错误特征且时间轴差 2 倍。
+- `max_speakers` 上限 8。
 
 ## License
 
