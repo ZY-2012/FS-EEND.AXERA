@@ -11,12 +11,12 @@ from ls_eend_sdk import diarize  # noqa: E402
 
 def main():
     here = Path(__file__).resolve().parent
-    default_model = here.parent / 'models' / 'streaming_step.axmodel'
+    default_model = here.parent / 'models' / 'simu' / 'streaming_step.axmodel'
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--wav', required=True, help='input audio (any sample rate)')
     parser.add_argument('--model', default=str(default_model),
-                        help='streaming_step.axmodel, or a .onnx for host testing')
+                        help='models/<variant>/streaming_step.axmodel, or a .onnx for host testing')
     parser.add_argument('--rttm', default=None, help='output RTTM path (default: <wav>.rttm)')
     parser.add_argument('--max-speakers', type=int, default=8,
                         help='keep the first N of 8 speaker channels')

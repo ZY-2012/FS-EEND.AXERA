@@ -76,20 +76,20 @@ FS-EEND.AXERA/
 
 ```bash
 # 1) 取量化模型
-mkdir -p models && cd models
-wget https://huggingface.co/HY-2012/FS-EEND.AXERA/resolve/main/models/streaming_step.axmodel
+mkdir -p models/simu && cd models/simu
+wget https://huggingface.co/HY-2012/FS-EEND.AXERA/resolve/main/models/simu/streaming_step.axmodel
 cd ..
 
 # 2) Python
 pip install -r requirements.txt
-python python/example.py --model models/streaming_step.axmodel \
+python python/example.py --model models/simu/streaming_step.axmodel \
                         --wav your.wav --max-speakers 4
 
 # 3) C++
 bash cpp/download_toolchains.sh      # gcc 交叉编译器 + AX650N BSP
 bash cpp/build_ax650.sh              # -> cpp/bin/ls_eend_ax650
 export LD_LIBRARY_PATH=/soc/lib:$LD_LIBRARY_PATH
-./cpp/bin/ls_eend_ax650 --model models/streaming_step.axmodel \
+./cpp/bin/ls_eend_ax650 --model models/simu/streaming_step.axmodel \
                         --wav your.wav --max-speakers 4
 ```
 

@@ -12,7 +12,7 @@ pip install -r requirements.txt      # axengine 板端镜像已自带
 
 ```bash
 python example.py \
-    --model ../models/streaming_step.axmodel \
+    --model ../models/simu/streaming_step.axmodel \
     --wav   ../samples/mix_0000176.wav \
     --rttm  out.rttm \
     --max-speakers 4
@@ -25,7 +25,7 @@ python example.py \
 ```python
 from ls_eend_sdk import diarize
 
-result = diarize('meeting.wav', 'models/streaming_step.axmodel', max_speakers=4)
+result = diarize('meeting.wav', 'models/simu/streaming_step.axmodel', max_speakers=4)
 print(result['rttm'], result['speakers'], result['rtf'])
 for start, end, spk in result['segments']:
     print(f'{start:.2f}-{end:.2f} speaker_{spk}')
@@ -36,7 +36,7 @@ for start, end, spk in result['segments']:
 ```python
 from ls_eend_sdk import StreamingDiarizer, extract_features, load_audio
 
-runner = StreamingDiarizer('models/streaming_step.axmodel')
+runner = StreamingDiarizer('models/simu/streaming_step.axmodel')
 audio, _ = load_audio('meeting.wav')
 for frame in extract_features(audio):
     logits = runner.step(frame)     # 前 9 帧返回 None（卷积 warmup）
