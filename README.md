@@ -37,6 +37,33 @@ LS-EEND（FS-EEND 的在线版本）说话人日志（speaker diarization）模�
 
 - [x] 模型导出 + 导出对分（`model_convert/`）
 - [x] 量化校准数据生成 + Pulsar2 量化（`model_convert/`）
+### RTF 对比（AX650N，同一 120 s 样本 `samples/sample_meeting.wav`）
+
+与板端 3D-Speaker（FSMN VAD + CAM++ + 谱聚类量化管线，见
+[pyannote-speaker-diarization.AXERA](https://github.com/ZY-2012/pyannote-speaker-diarization.AXERA)，
+RTF 0.046~0.047）同口径对比：
+
+| 系统 | 板端路径 | 推理耗时 | RTF |
+|---|---|---|---|
+| 3D-Speaker（VAD+CAM+++谱聚类） | AX650N，量化 | — | 0.046~0.047 |
+| **FS-EEND（本工程）** | AX650N，C++ | 2.79 s | **0.0232** |
+
+FS-EEND 板端快约 2 倍，且为逐帧流式（3D-Speaker 需整段音频才能聚类）。
+
+> 本表 120 s 样本上 2.32 ms/帧；仿真样本（192 s）上 2.79 ms/帧（README 顶部表），
+> 差异来自样本帧数与首帧开销分摊。
+
+### 测试集下载与参考
+
+| 数据集 | 音频下载 | 参考标注 |
+|---|---|---|
+| AMI dev（16 场 Mix-Headset） | [AMI 官网](https://groups.inf.ed.ac.uk/ami/corpus/)（需注册）→ 下载 MixHeadset 音频 | NXT words 标注（`{meeting}.{spk}.words.xml`），重建脚本见 [pyannote-speaker-diarization.AXERA/benchmark](https://github.com/ZY-2012/pyannote-speaker-diarization.AXERA/tree/main/benchmark) 的 `prep_ami_ref.py` |
+| AliMeeting eval（4 场远场） | [OpenSLR 119](https://www.openslr.org/119/)：`Eval_Ali.tar.gz`（8 通道 16 kHz，取 ch0） | `Eval_Ali_TextGrid.tar.gz`，重建脚本 `prep_ali_ref.py`（同上仓库） |
+| VoxConverse test（232 场） | [官方仓库](https://github.com/joonson/voxconverse)（wav 直链见其 README；镜像 [diarizers-community/voxconverse](https://huggingface.co/datasets/diarizers-community/voxconverse) 更快） | 官方仓库 `test/*.rttm`（v0.3） |
+
+训练数据（AliMeeting train / AMI train）的下载与制作见
+[training/README.md](training/README.md)。
+
 - [x] Python 板端推理（`python/`）
 - [x] C++ 板端推理（`cpp/`）
 
