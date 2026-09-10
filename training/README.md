@@ -31,6 +31,22 @@ pip install pytorch-lightning==1.8.6 hyperpyyaml soundfile librosa h5py
 
 ## 1. 数据下载
 
+### 数据总览（训练 + 测试 + 参考）
+
+| 数据集 | 用途 | 规模 | 下载地址 | 标注 | 备注 |
+|---|---|---|---|---|---|
+| AliMeeting far **训练集** | 训练（中文会议） | 78.6 GB（212 场） | [OpenSLR 119](https://www.openslr.org/119/) → 阿里云 OSS 直链（见 1.1） | 官方 TextGrid | 8 麦克风阵列 16 kHz，多通道声学增强的数据来源；OSS 约 10 MB/s |
+| AliMeeting **Eval** | 测试（中文会议） | 3.7 GB + TextGrid | 同上 | 官方 TextGrid | 取 ch0 降混；评测 4 场（R8001_M8004 / R8003_M8001 / R8007_M8010 / R8007_M8011） |
+| AMI **训练集** | 训练（英文会议） | 137 场 × ~200 MB | [AMI 镜像](https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/) `amicorpus/{id}/audio/{id}.Mix-Headset.wav` | segments XML（[ami_public_manual_1.6.2.zip](https://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/ami_public_manual_1.6.2.zip)，22 MB） | ⚠️ 镜像限速 0.4~3.8 KB/s，**先下完再处理**（曾因边下边处理截断 37% 数据） |
+| AMI **dev** | 测试（英文会议） | 16 场 | 同上 | NXT words 标注（`{id}.{spk}.words.xml`，同一 zip 内） | 报告用 12 场（ES2004b/IS1009b/TS3003b 留作调参，TS3003d 无音频） |
+| VoxConverse **test** | 测试（近场媒体，1~21 人） | 4.3 GB（232 场） | [官方仓库](https://github.com/joonson/voxconverse)（zip 直链见其 README）；镜像 [diarizers-community/voxconverse](https://huggingface.co/datasets/diarizers-community/voxconverse)（parquet） | 官方 `test/*.rttm`（v0.3） | 牛津直链限速 ~190 KB/s，HF 镜像快一个量级 |
+| 仿真样本 `mix_0000176.wav` | 冒烟测试 | 192 s / 4 人 | [FS-EEND 仓库](https://github.com/Audio-WestlakeU/FS-EEND) 自带 `test_samples/` | 自带 rttm | LS-EEND 同域，仅用于部署对分，不代表真实性能 |
+
+划分规则：AMI 训练/测试按上游 split（ES2004/IS1009/TS3003/EN2002 四组留作 dev）；
+AliMeeting 训练集中另留 10 场 held-out 作调参验证（按会议切分，防止同会议泄漏）。
+
+
+
 ### 1.1 AliMeeting（中文，远场会议，8 麦克风阵列）
 
 OpenSLR 119：https://www.openslr.org/119/ （阿里云 OSS 直链，10 MB/s 量级）
