@@ -61,6 +61,15 @@ LS-EEND（FS-EEND 的在线版本）说话人日志（speaker diarization）模�
 U16 激活 / S8 权重。8 kHz 输入，每帧 0.1 s；通道布局为 ch0 静音、ch1..C-2 说话人、
 ch(C-1) 非说话人。
 
+## 训练与评测复现
+
+`training/` 目录包含完整的中英联合 finetune 链路（数据下载/制作/训练/推理/评测），
+以及新训模型与原始 checkpoint 的指标对比：
+
+- [training/README.md](training/README.md) — 完整训练步骤
+- [training/RESULTS.md](training/RESULTS.md) — 指标对比（中文 AliMeeting 64.01% → 21.14%）
+- [training/experiments.md](training/experiments.md) — 逐轮消融与失效分析
+
 ## 目录结构
 
 ```

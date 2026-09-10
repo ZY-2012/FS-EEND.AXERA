@@ -1,0 +1,85 @@
+log:
+  model_name: spk_onl_zh_en_combined
+  log_dir: !ref ./logs/<log[model_name]>
+  save_top_k: -1
+  start_epoch: 0
+  end_epoch: 19
+  save_avg_path: /root/autodl-tmp/ckpts/zh_en_v2_avg.ckpt
+
+training:
+  batch_size: 8
+  n_workers: 8
+  shuffle: True
+  lr: 1.0e-05
+  opt: adam
+  max_epochs: 20
+  grad_clip: 5
+  grad_accm: 1
+  scheduler:
+  schedule_scale:
+  warm_steps:
+  early_stop_epoch: 500
+  init_ckpt: /root/autodl-tmp/ckpts/zh_en_avg_last10.ckpt
+  dist_strategy:
+  sync_batchnorm: True
+  val_interval: 1
+  seed: 777
+
+model:
+  arch: onlineConformerDA_cummn_retention_emb1dcnn_linear_nonautoreg_l2norm_pit
+  params:
+    n_units: 256
+    n_heads: 4
+    enc_n_layers: 4
+    feed_forward_expansion_factor: 4
+    conv_expansion_factor: 2
+    dropout: 0.1
+    conv_kernel_size: 16
+    half_step_residual: True
+    max_seqlen: !ref <data[chunk_size]>
+    recurrent_chunk_size: 500
+    dec_n_layers: 2
+    conv_delay: 9
+
+data:
+  num_speakers:
+  max_speakers: 4
+  context_recp: 7
+  label_delay: 0
+  feat_type: logmel23_cummn
+  chunk_size: 2000
+  chunk_step: 2000
+  val_chunk_size: 100000
+  val_chunk_step: 100000
+  subsampling: 10
+  use_last_samples: True
+  shuffle: False
+  augment:
+  feat:
+    sample_rate: 8000
+    win_length: 200
+    n_fft: 1024
+    hop_length: 80
+    n_mels: 23
+    f_max: 4000
+    power: 1
+  scaler:
+    statistic: instance
+    normtype: minmax
+    dims: [1, 2]
+
+  train_data_dir: /root/autodl-tmp/data/combined_v2
+  val_data_dir: /root/autodl-tmp/data/val
+
+task:
+  max_speakers:
+  spk_attractor:
+    enable: True
+    shuffle: True
+    enc_dropout: 0.5
+    dec_dropout: 0.5
+    consis_weight: 1
+
+debug:
+  num_sanity_val_steps: 3
+  log_every_n_steps: 5
